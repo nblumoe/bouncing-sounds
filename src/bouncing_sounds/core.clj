@@ -13,6 +13,7 @@
   (q/color-mode :hsb 100 100 100)
   (reset-state))
 
+;; TODO handle circles inside each other
 (defn colliding? [{x1 :x y1 :y r1 :radius}
                   {x2 :x y2 :y r2 :radius}]
   (when-not (= 0 (- x1 x2) (- y1 y2))
@@ -22,21 +23,31 @@
 (defn collides-with-any? [circle other-circles]
   (some #{true} (map #(colliding? circle %) other-circles)))
 
+(defn small-circle? [circle]
+  (< (:radius circle) 5))
+
 (defn kill-small [circles]
-  (remove #(< (:radius %) 5) circles))
+  (remove small-circle? circles))
+
+(defn reverse-small [circles]
+  (map #(if (small-circle? %)
+          (reverse-growth %)
+          %) circles))
+
+(defn reverse-growth [circle]
+  (update circle :growth -))
 
 (defn collide-circles [circles]
   (map #(if (collides-with-any? % circles)
-          (assoc % :grow? false)
-          %)
-       circles))
+          (reverse-growth %)
+          %) circles))
 
 (defn grow-circles [circles]
-  (map #(update % :radius (if (:grow? %) inc dec)) circles))
+  (map #(update % :radius (partial + (:growth %))) circles))
 
 (defn update-state [state]
   (-> state
-      (update :circles kill-small)
+      (update :circles reverse-small)
       (update :circles collide-circles)
       (update :circles grow-circles))
   #_
@@ -50,7 +61,7 @@
     (q/ellipse x y (* 2 radius) (* 2 radius))))
 
 (defn mouse-clicked [state {:keys [x y]}]
-  (update state :circles conj {:x x :y y :radius 20 :hue (rand-int 100) :grow? true}))
+  (update state :circles conj {:x x :y y :radius 20 :hue (rand-int 100) :growth (inc (rand-int 5))}))
 
 #_
 (q/defsketch bouncing-sounds
