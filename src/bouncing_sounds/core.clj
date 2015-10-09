@@ -3,6 +3,14 @@
              [core :as q]
              [middleware :as m]]))
 
+;; for whatever reason, we need to create a first sketch before
+;; starting overtone, otherwise an exception is thrown from time to
+;; time
+;; TODO dig into this and fix it
+(q/defsketch foo :size [10 10])
+(quil.applet/applet-close foo)
+(use 'overtone.live)
+
 (defn reset-state []
   {:circles []})
 
@@ -29,17 +37,23 @@
 (defn kill-small [circles]
   (remove small-circle? circles))
 
+(defn reverse-growth [circle]
+  (update circle :growth -))
+
 (defn reverse-small [circles]
   (map #(if (small-circle? %)
           (reverse-growth %)
           %) circles))
 
-(defn reverse-growth [circle]
-  (update circle :growth -))
+(definst bounce-inst [freq 220]
+  (let [env (env-gen (perc 0.2 0.3) :action FREE)]
+    (* env (saw freq))))
 
 (defn collide-circles [circles]
   (map #(if (collides-with-any? % circles)
-          (reverse-growth %)
+          (do
+            (bounce-inst)
+            (reverse-growth %))
           %) circles))
 
 (defn grow-circles [circles]
@@ -63,13 +77,13 @@
 (defn mouse-clicked [state {:keys [x y]}]
   (update state :circles conj {:x x :y y :radius 20 :hue (rand-int 100) :growth (inc (rand-int 5))}))
 
-#_
-(q/defsketch bouncing-sounds
-  :title "Bouncing Sounds"
-  :size [800 800]
-  :setup setup
-  :update update-state
-  :draw draw-state
-  :mouse-clicked mouse-clicked
-  :features [:keep-on-top :resizable]
-  :middleware [m/fun-mode])
+(defn start []
+  (q/defsketch bouncing-sounds
+    :title "Bouncing Sounds"
+    :size [800 800]
+    :setup setup
+    :update update-state
+    :draw draw-state
+    :mouse-clicked mouse-clicked
+    :features [:keep-on-top :resizable]
+    :middleware [m/fun-mode]))
