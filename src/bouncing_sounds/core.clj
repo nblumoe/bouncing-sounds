@@ -15,7 +15,7 @@
 
 (defn setup []
   (q/smooth)
-  (q/frame-rate 10)
+  (q/frame-rate 30)
   (q/no-fill)
   (q/color-mode :hsb 100 100 100)
   (reset-state))
@@ -55,8 +55,10 @@
 (defn collide-circles [circles]
   (map #(if (collides-with-any? % circles)
           (do
-            (bounce-inst (circle->freq %) (* 1 (/ (:hue %) 100)))
-            (reverse-growth %))
+            (bounce-inst (circle->freq %) (/ (:hue %) 100))
+            (-> %
+                reverse-growth
+                (assoc :collision-time (q/frame-count))))
           %) circles))
 
 (defn grow-circles [circles]
@@ -72,13 +74,19 @@
 
 (defn draw-state [{:keys [circles]}]
   (q/background 0)
-
-  (doseq [{:keys [x y radius hue]} circles]
+  (q/stroke-weight 2)
+  (doseq [{:keys [x y radius hue collision-time]} circles]
     (q/stroke hue 100 100)
-    (q/ellipse x y (* 2 radius) (* 2 radius))))
+    (q/ellipse x y (* 2 radius) (* 2 radius))
+    (when (= collision-time (q/frame-count))
+      (q/stroke hue 30 100)
+      (q/stroke-weight 8)
+      (q/ellipse x y (* 2 radius) (* 2 radius)))))
 
-(defn mouse-clicked [state {:keys [x y]}]
-  (update state :circles conj {:x x :y y :radius 20 :hue (rand-int 100) :growth (inc (rand-int 3))}))
+(defn mouse-clicked [state {:keys [x y button]}]
+  (case button
+    :left (update state :circles conj {:x x :y y :radius 5 :hue (rand-int 100) :growth (inc (rand-int 3))})
+    :right (reset-state)))
 
 (defn start []
   (q/defsketch bouncing-sounds
