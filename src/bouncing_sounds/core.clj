@@ -6,7 +6,6 @@
 ;; for whatever reason, we need to create a first sketch before
 ;; starting overtone, otherwise an exception is thrown from time to
 ;; time
-;; TODO dig into this and fix it
 (q/defsketch foo :size [10 10])
 (quil.applet/applet-close foo)
 (use 'overtone.live)
@@ -45,19 +44,23 @@
           (reverse-growth %)
           %) circles))
 
-(definst bounce-inst [freq 220]
-  (let [env (env-gen (perc 0.2 0.3) :action FREE)]
+(definst bounce-inst [freq 220 release 0.3]
+  (let [env (env-gen (perc 0.1 release) :action FREE)]
     (* env (saw freq))))
+
+(defn circle->freq [{:keys [radius]}]
+  (let [min-freq 50]
+    (+ min-freq (* min-freq (Math/floor (/ radius (* 100 (/ (inc (q/mouse-x)) (q/width)))))))))
 
 (defn collide-circles [circles]
   (map #(if (collides-with-any? % circles)
           (do
-            (bounce-inst)
+            (bounce-inst (circle->freq %) (* 1 (/ (:hue %) 100)))
             (reverse-growth %))
           %) circles))
 
 (defn grow-circles [circles]
-  (map #(update % :radius (partial + (:growth %))) circles))
+  (map #(update % :radius (partial + (* 4 (/ (q/mouse-y) (q/height))  (:growth %)))) circles))
 
 (defn update-state [state]
   (-> state
@@ -75,7 +78,7 @@
     (q/ellipse x y (* 2 radius) (* 2 radius))))
 
 (defn mouse-clicked [state {:keys [x y]}]
-  (update state :circles conj {:x x :y y :radius 20 :hue (rand-int 100) :growth (inc (rand-int 5))}))
+  (update state :circles conj {:x x :y y :radius 20 :hue (rand-int 100) :growth (inc (rand-int 3))}))
 
 (defn start []
   (q/defsketch bouncing-sounds
