@@ -45,12 +45,12 @@
           %) circles))
 
 (definst bounce-inst [freq 220 release 0.3]
-  (let [env (env-gen (perc 0.1 release) :action FREE)]
-    (* env (saw freq))))
+  (let [env (env-gen (lin 0.01 0.02 release) 1 1 0 1 FREE)]
+    (* env (sin-osc freq))))
 
 (defn circle->freq [{:keys [radius]}]
-  (let [min-freq 50]
-    (+ min-freq (* min-freq (Math/floor (/ radius (* 100 (/ (inc (q/mouse-x)) (q/width)))))))))
+  (let [min-freq 200]
+    (+ min-freq (* min-freq (Math/floor (/ radius 50 (/ (inc (q/mouse-x)) (q/width))))))))
 
 (defn collide-circles [circles]
   (map #(if (collides-with-any? % circles)
@@ -62,30 +62,45 @@
           %) circles))
 
 (defn grow-circles [circles]
-  (map #(update % :radius (partial + (* 4 (/ (q/mouse-y) (q/height))  (:growth %)))) circles))
+  (map #(update % :radius (partial + (* 2 (/ (q/mouse-y) (q/height))  (:growth %)))) circles))
 
 (defn update-state [state]
   (-> state
       (update :circles reverse-small)
       (update :circles collide-circles)
-      (update :circles grow-circles))
-  #_
-  (reset-state))
+      (update :circles grow-circles)))
 
 (defn draw-state [{:keys [circles]}]
   (q/background 0)
-  (q/stroke-weight 2)
+
   (doseq [{:keys [x y radius hue collision-time]} circles]
-    (q/stroke hue 100 100)
-    (q/ellipse x y (* 2 radius) (* 2 radius))
-    (when (= collision-time (q/frame-count))
-      (q/stroke hue 30 100)
-      (q/stroke-weight 8)
-      (q/ellipse x y (* 2 radius) (* 2 radius)))))
+    (let [diameter (* 2 radius)]
+      (q/no-fill)
+      (q/stroke hue 100 100)
+      (q/stroke-weight 4)
+      (q/ellipse x y diameter diameter)
+
+      (q/stroke hue 100 60)
+      (q/stroke-weight 2)
+      (q/ellipse x y (- diameter 10) (- diameter 10))
+
+      (q/stroke hue 100 40)
+      (q/stroke-weight 1)
+      (q/ellipse x y (- diameter 20) (- diameter 20))
+
+      (when (= collision-time (q/frame-count))
+        (q/stroke hue 30 100)
+        (q/stroke-weight 12)
+        (q/fill hue 60 20)
+        (q/ellipse x y diameter diameter)))))
 
 (defn mouse-clicked [state {:keys [x y button]}]
   (case button
-    :left (update state :circles conj {:x x :y y :radius 5 :hue (rand-int 100) :growth (inc (rand-int 3))})
+    :left (update state :circles conj {:x x
+                                       :y y
+                                       :radius 5
+                                       :hue (rand-int 100)
+                                       :growth (inc (rand-int 3))})
     :right (reset-state)))
 
 (defn start []
